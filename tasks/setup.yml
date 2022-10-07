@@ -3,12 +3,16 @@
   ansible.builtin.file:
     path: /opt/app-loki/config
     state: directory
+    owner: docker_files
+    group: docker_files
     mode: 0755
 
 - name: Copy files
   ansible.builtin.copy:
     src: loki-config.yml
     dest: /opt/app-loki/config/loki-config.yml
+    owner: docker_files
+    group: docker_files
     mode: 0644
 
 - name: Ensure grafana/loki image is pulled
