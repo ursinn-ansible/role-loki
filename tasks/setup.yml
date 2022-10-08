@@ -17,7 +17,7 @@
 
 - name: Ensure grafana/loki image is pulled
   community.docker.docker_image:
-    name: docker.io/grafana/loki:2.4.2
+    name: docker.io/grafana/loki:2.6.1
     source: pull
     force_source: yes
   register: pulled
