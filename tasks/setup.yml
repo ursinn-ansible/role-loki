@@ -1,19 +1,7 @@
 ---
-- name: Create config directory
-  ansible.builtin.file:
-    path: /opt/app-loki/config
-    state: directory
-    owner: docker_files
-    group: docker_files
-    mode: 0755
-
-- name: Copy files
-  ansible.builtin.copy:
-    src: loki-config.yml
-    dest: /opt/app-loki/config/loki-config.yml
-    owner: docker_files
-    group: docker_files
-    mode: 0644
+- name: Create loki config volume
+  community.docker.docker_volume:
+    name: app_loki_config
 
 - name: Ensure grafana/loki image is pulled
   community.docker.docker_image:
@@ -34,15 +22,51 @@
   register: result
 
 - name: Create loki container
-  ansible.builtin.shell: |
-    docker run -d \
-    --name=loki \
-    -v /opt/app-loki/config:/mnt/config:Z \
-    --network=app-network \
-    --restart unless-stopped \
-    docker.io/grafana/loki:2.6.1 \
-    -config.file=/mnt/config/loki-config.yml
-  when: 
+  community.docker.docker_container:
+    command: ["-config.file=/mnt/config/loki-config.yml"]
+    image: docker.io/grafana/loki:2.6.1
+    mounts:
+     - source: app_loki_config
+       target: /mnt/config
+    name: loki
+    networks:
+     - name: app-network
+    restart_policy: unless-stopped
+    state: started
+  when:
     pulled.changed
     or
+    result.exists == false
+
+- name: Create tmp loki directory
+  ansible.builtin.file:
+    path: /opt/tmp-loki
+    state: directory
+  when:
+    result.exists == false
+
+- name: Copy loki file
+  ansible.builtin.copy:
+    src: loki-config.yml
+    dest: /opt/tmp-loki/loki-config.yml
+  when:
+    result.exists == false
+
+- name: Copy config file into loki container
+  shell: docker cp /opt/tmp-loki/loki-config.yml loki:/mnt/config/loki-config.yml
+  when:
+    result.exists == false
+
+- name: Remove tmp loki directory
+  ansible.builtin.file:
+    path: /opt/tmp-loki
+    state: absent
+  when:
+    result.exists == false
+
+- name: Restart loki container
+  community.docker.docker_container:
+    name: loki
+    restart: yes
+  when:
     result.exists == false
