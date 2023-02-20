@@ -5,7 +5,7 @@
 
 - name: Ensure grafana/loki image is pulled
   community.docker.docker_image:
-    name: docker.io/grafana/loki:2.6.1
+    name: docker.io/grafana/loki
     source: pull
     force_source: yes
   register: pulled
@@ -24,7 +24,7 @@
 - name: Create loki container
   community.docker.docker_container:
     command: ["-config.file=/mnt/config/loki-config.yml"]
-    image: docker.io/grafana/loki:2.6.1
+    image: docker.io/grafana/loki
     mounts:
      - source: loki_config
        target: /mnt/config
