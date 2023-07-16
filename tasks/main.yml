@@ -1,3 +1,72 @@
 ---
-- include_tasks: "{{ role_path }}/tasks/setup.yml"
-  when: "app_loki_enabled|bool"
+- name: Create loki config volume
+  community.docker.docker_volume:
+    name: loki_config
+
+- name: Ensure grafana/loki image is pulled
+  community.docker.docker_image:
+    name: docker.io/grafana/loki
+    source: pull
+    force_source: yes
+  register: pulled
+
+- name: Remove loki container
+  community.docker.docker_container:
+    name: loki
+    state: absent
+  when: pulled.changed
+
+- name: Get infos on loki container
+  community.docker.docker_container_info:
+    name: loki
+  register: result
+
+- name: Create loki container
+  community.docker.docker_container:
+    command: ["-config.file=/mnt/config/loki-config.yml"]
+    image: docker.io/grafana/loki
+    mounts:
+     - source: loki_config
+       target: /mnt/config
+    name: loki
+    networks:
+     - name: app-network
+    restart_policy: unless-stopped
+    state: started
+  when:
+    pulled.changed
+    or
+    result.exists == false
+
+- name: Create tmp loki directory
+  ansible.builtin.file:
+    path: /opt/tmp-loki
+    state: directory
+  when:
+    result.exists == false
+
+- name: Copy loki file
+  ansible.builtin.copy:
+    src: loki-config.yml
+    dest: /opt/tmp-loki/loki-config.yml
+  when:
+    result.exists == false
+
+- name: Copy config file into loki container
+  shell: docker cp /opt/tmp-loki/loki-config.yml loki:/mnt/config/loki-config.yml
+  when:
+    result.exists == false
+
+- name: Remove tmp loki directory
+  ansible.builtin.file:
+    path: /opt/tmp-loki
+    state: absent
+  when:
+    result.exists == false
+
+- name: Restart loki container
+  community.docker.docker_container:
+    name: loki
+    restart: yes
+  when:
+    result.exists == false
