@@ -1,0 +1,3 @@
+---
+app_loki:
+  nginx_htpasswd: ""
