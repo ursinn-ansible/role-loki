@@ -1,36 +1,36 @@
 ---
 - name: Create loki config volume
   community.docker.docker_volume:
-    name: loki_config
+    name: "{{ system_loki_docker_volume }}"
 
-- name: Ensure grafana/loki image is pulled
+- name: Ensure loki image is pulled
   community.docker.docker_image:
-    name: docker.io/grafana/loki
+    name: "{{ system_loki_docker_image }}"
     source: pull
     force_source: yes
   register: pulled
 
 - name: Remove loki container
   community.docker.docker_container:
-    name: loki
+    name: "{{ system_loki_docker_container }}"
     state: absent
   when: pulled.changed
 
 - name: Get infos on loki container
   community.docker.docker_container_info:
-    name: loki
+    name: "{{ system_loki_docker_container }}"
   register: result
 
 - name: Create loki container
   community.docker.docker_container:
     command: ["-config.file=/mnt/config/loki-config.yml"]
-    image: docker.io/grafana/loki
+    image: "{{ system_loki_docker_image }}"
     mounts:
-     - source: loki_config
+     - source: "{{ system_loki_docker_volume }}"
        target: /mnt/config
-    name: loki
+    name: "{{ system_loki_docker_container }}"
     networks:
-     - name: app-network
+     - name: "{{ system_loki_docker_network }}"
     restart_policy: unless-stopped
     state: started
   when:
@@ -40,7 +40,7 @@
 
 - name: Create tmp loki directory
   ansible.builtin.file:
-    path: /opt/tmp-loki
+    path: "{{ system_loki_tmp_dir }}"
     state: directory
   when:
     result.exists == false
@@ -48,60 +48,25 @@
 - name: Copy loki file
   ansible.builtin.copy:
     src: loki-config.yml
-    dest: /opt/tmp-loki/loki-config.yml
+    dest: "{{ system_loki_tmp_dir }}/loki-config.yml"
   when:
     result.exists == false
 
 - name: Copy config file into loki container
-  shell: docker cp /opt/tmp-loki/loki-config.yml loki:/mnt/config/loki-config.yml
+  shell: "docker cp {{ system_loki_tmp_dir }}/loki-config.yml loki:/mnt/config/loki-config.yml"
   when:
     result.exists == false
 
 - name: Remove tmp loki directory
   ansible.builtin.file:
-    path: /opt/tmp-loki
+    path: "{{ system_loki_tmp_dir }}"
     state: absent
   when:
     result.exists == false
 
 - name: Restart loki container
   community.docker.docker_container:
-    name: loki
+    name: "{{ system_loki_docker_container }}"
     restart: yes
   when:
     result.exists == false
-
-- name: Ensure beevelop/nginx-basic-auth image is pulled
-  community.docker.docker_image:
-    name: docker.io/beevelop/nginx-basic-auth
-    source: pull
-    force_source: yes
-  register: pulled_nginx
-
-- name: Remove nginx container
-  community.docker.docker_container:
-    name: loki-nginx
-    state: absent
-  when: pulled_nginx.changed
-
-- name: Get infos on nginx container
-  community.docker.docker_container_info:
-    name: loki-nginx
-  register: result_nginx
-
-- name: Create nginx container
-  community.docker.docker_container:
-    image: docker.io/beevelop/nginx-basic-auth
-    name: loki-nginx
-    networks:
-     - name: app-network
-    env:
-      FORWARD_HOST: "loki"
-      FORWARD_PORT: "3100"
-      HTPASSWD: "{{ app_loki.nginx_htpasswd }}"
-    restart_policy: unless-stopped
-    state: started
-  when:
-    pulled_nginx.changed
-    or
-    result_nginx.exists == false

@@ -1,3 +1,7 @@
 ---
-app_loki:
-  nginx_htpasswd: ""
+system_loki_docker_volume: loki_config
+system_loki_docker_image: docker.io/grafana/loki
+system_loki_docker_container: loki
+system_loki_docker_network: app-network
+
+system_loki_tmp_dir: "/tmp/ansible-role-loki"
