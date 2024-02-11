@@ -53,7 +53,7 @@
     result.exists == false
 
 - name: Copy config file into loki container
-  shell: "docker cp {{ system_loki_tmp_dir }}/loki-config.yml loki:/mnt/config/loki-config.yml"
+  shell: "docker cp {{ system_loki_tmp_dir }}/loki-config.yml {{ system_loki_docker_container }}:/mnt/config/loki-config.yml"
   when:
     result.exists == false
 
