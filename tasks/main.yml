@@ -1,36 +1,40 @@
 ---
-- name: Create loki config volume
-  community.docker.docker_volume:
-    name: "{{ system_loki_docker_volume }}"
+- name: set vars
+  set_fact:
+    docker_image: '{{ role_loki_docker_image }}'
+    docker_container: '{{ role_loki_docker_container }}'
+    docker_volume: '{{ role_loki_docker_volume }}'
+    docker_network: '{{ role_loki_docker_network }}'
+    tmp_dir: '{{ role_loki_tmp_dir }}'
 
-- name: Ensure loki image is pulled
+- name: Ensure image is pulled
   community.docker.docker_image:
-    name: "{{ system_loki_docker_image }}"
+    name: "{{ docker_image }}"
     source: pull
     force_source: yes
   register: pulled
 
-- name: Remove loki container
+- name: Remove container
   community.docker.docker_container:
-    name: "{{ system_loki_docker_container }}"
+    name: "{{ docker_container }}"
     state: absent
   when: pulled.changed
 
-- name: Get infos on loki container
+- name: Get infos on container
   community.docker.docker_container_info:
-    name: "{{ system_loki_docker_container }}"
+    name: "{{ docker_container }}"
   register: result
 
 - name: Create loki container
   community.docker.docker_container:
     command: ["-config.file=/mnt/config/loki-config.yml"]
-    image: "{{ system_loki_docker_image }}"
+    image: "{{ docker_image }}"
     mounts:
-     - source: "{{ system_loki_docker_volume }}"
+     - source: "{{ docker_volume }}"
        target: /mnt/config
-    name: "{{ system_loki_docker_container }}"
+    name: "{{ docker_container }}"
     networks:
-     - name: "{{ system_loki_docker_network }}"
+     - name: "{{ docker_network }}"
     restart_policy: unless-stopped
     state: started
   when:
@@ -38,9 +42,9 @@
     or
     result.exists == false
 
-- name: Create tmp loki directory
+- name: Create tmp directory
   ansible.builtin.file:
-    path: "{{ system_loki_tmp_dir }}"
+    path: "{{ tmp_dir }}"
     state: directory
   when:
     result.exists == false
@@ -48,25 +52,25 @@
 - name: Copy loki file
   ansible.builtin.copy:
     src: loki-config.yml
-    dest: "{{ system_loki_tmp_dir }}/loki-config.yml"
+    dest: "{{ role_loki_tmp_dir }}/loki-config.yml"
   when:
     result.exists == false
 
 - name: Copy config file into loki container
-  shell: "docker cp {{ system_loki_tmp_dir }}/loki-config.yml {{ system_loki_docker_container }}:/mnt/config/loki-config.yml"
+  shell: "docker cp {{ role_loki_tmp_dir }}/loki-config.yml {{ docker_container }}:/mnt/config/loki-config.yml"
   when:
     result.exists == false
 
-- name: Remove tmp loki directory
+- name: Remove tmp directory
   ansible.builtin.file:
-    path: "{{ system_loki_tmp_dir }}"
+    path: "{{ tmp_dir }}"
     state: absent
   when:
     result.exists == false
 
-- name: Restart loki container
+- name: Restart container
   community.docker.docker_container:
-    name: "{{ system_loki_docker_container }}"
+    name: "{{ docker_container }}"
     restart: yes
   when:
     result.exists == false
