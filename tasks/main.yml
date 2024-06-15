@@ -25,6 +25,12 @@
     name: "{{ docker_container }}"
   register: result
 
+- name: Create network
+  community.docker.docker_network:
+    name: "{{ docker_network }}"
+    driver_options:
+          com.docker.network.bridge.name: "br-{{ docker_network }}"
+
 - name: Create loki container
   community.docker.docker_container:
     command: ["-config.file=/mnt/config/loki-config.yml"]
