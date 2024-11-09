@@ -1,10 +1,10 @@
 ---
 - name: set vars
   set_fact:
-    docker_image: '{{ role_loki_docker_image }}'
-    docker_container: '{{ role_loki_docker_container }}'
-    docker_volume: '{{ role_loki_docker_volume }}'
-    docker_network: '{{ role_loki_docker_network }}'
+    docker_image: '{{ role_loki_image }}'
+    docker_container: '{{ role_loki_container }}'
+    docker_volume: '{{ role_loki_volume }}_config'
+    docker_network: '{{ role_loki_network }}'
     tmp_dir: '{{ role_loki_tmp_dir }}'
 
 - name: Ensure image is pulled
@@ -24,6 +24,10 @@
   community.docker.docker_container_info:
     name: "{{ docker_container }}"
   register: result
+
+- name: Create volume
+  community.docker.docker_volume:
+    name: "{{ docker_volume }}"
 
 - name: Create network
   community.docker.docker_network:
@@ -58,12 +62,12 @@
 - name: Copy loki file
   ansible.builtin.copy:
     src: loki-config.yml
-    dest: "{{ role_loki_tmp_dir }}/loki-config.yml"
+    dest: "{{ tmp_dir }}/loki-config.yml"
   when:
     result.exists == false
 
 - name: Copy config file into loki container
-  shell: "docker cp {{ role_loki_tmp_dir }}/loki-config.yml {{ docker_container }}:/mnt/config/loki-config.yml"
+  shell: "docker cp {{ tmp_dir }}/loki-config.yml {{ docker_container }}:/mnt/config/loki-config.yml"
   when:
     result.exists == false
 
