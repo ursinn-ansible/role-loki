@@ -5,7 +5,6 @@
     docker_container: '{{ role_loki_container }}'
     docker_volume: '{{ role_loki_volume }}_config'
     docker_network: '{{ role_loki_network }}'
-    tmp_dir: '{{ role_loki_tmp_dir }}'
 
 - name: Ensure image is pulled
   community.docker.docker_image:
@@ -37,7 +36,6 @@
 
 - name: Create loki container
   community.docker.docker_container:
-    command: ["-config.file=/mnt/config/loki-config.yml"]
     image: "{{ docker_image }}"
     mounts:
      - source: "{{ docker_volume }}"
@@ -50,37 +48,4 @@
   when:
     pulled.changed
     or
-    result.exists == false
-
-- name: Create tmp directory
-  ansible.builtin.file:
-    path: "{{ tmp_dir }}"
-    state: directory
-  when:
-    result.exists == false
-
-- name: Copy loki file
-  ansible.builtin.copy:
-    src: loki-config.yml
-    dest: "{{ tmp_dir }}/loki-config.yml"
-  when:
-    result.exists == false
-
-- name: Copy config file into loki container
-  shell: "docker cp {{ tmp_dir }}/loki-config.yml {{ docker_container }}:/mnt/config/loki-config.yml"
-  when:
-    result.exists == false
-
-- name: Remove tmp directory
-  ansible.builtin.file:
-    path: "{{ tmp_dir }}"
-    state: absent
-  when:
-    result.exists == false
-
-- name: Restart container
-  community.docker.docker_container:
-    name: "{{ docker_container }}"
-    restart: yes
-  when:
     result.exists == false

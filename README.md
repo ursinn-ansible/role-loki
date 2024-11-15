@@ -13,7 +13,6 @@ Docker Image: https://hub.docker.com/r/grafana/loki
 | role_loki_container | loki |
 | role_loki_volume | loki |
 | role_loki_network | app-network |
-| role_loki_tmp_dir | /tmp/ansible-role-loki |
 
 ## License
 
