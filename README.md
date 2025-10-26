@@ -9,7 +9,7 @@ Docker Image: https://hub.docker.com/r/grafana/loki
 
 | Option | Default Value |
 | ---- | ---- |
-| role_loki_image | docker.io/grafana/loki |
+| role_loki_image | docker.io/grafana/loki:3.5 |
 | role_loki_container | loki |
 | role_loki_volume | loki |
 | role_loki_network | app-network |
